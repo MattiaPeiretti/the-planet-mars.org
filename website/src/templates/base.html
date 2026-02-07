@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}the-planet-mars.org{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    {% block head %}{% endblock %}
+</head>
+<body class="dark-theme">
+    <header>
+        <nav class="container">
+            <a href="/" class="logo">the-planet-mars<span>.org</span></a>
+            <div class="nav-links">
+                <a href="/archive">Archive</a>
+                <a href="/rss">RSS</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="container footer-content">
+            <div class="footer-info">
+                <h3>the-planet-mars.org</h3>
+                <p>Scientific updates from the Martian surface.</p>
+            </div>
+            <div class="footer-subscribe">
+                <h4>Stay Updated</h4>
+                <p>Get notified when new research is published.</p>
+                <form action="/subscribe" method="POST" class="subscribe-form">
+                    <input type="email" name="email" placeholder="Enter your email" required>
+                    <button type="submit">Notify Me</button>
+                </form>
+            </div>
+        </div>
+        <div class="footer-bottom container">
+            <p>&copy; 2026 the-planet-mars.org. No comments, just data.</p>
+        </div>
+    </footer>
+</body>
+</html>

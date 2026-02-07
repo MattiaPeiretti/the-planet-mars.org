@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Research Archive - the-planet-mars.org{% endblock %}
+
+{% block content %}
+<section class="archive container">
+    <header class="section-header">
+        <h1>Research Archive</h1>
+        <p>A chronological history of research notes from our neighbor planet.</p>
+    </header>
+
+    <div class="archive-list">
+        {% for post in posts %}
+        <div class="archive-item">
+            <span class="date">{{ post.published_at.strftime('%Y-%m-%d') }}</span>
+            <a href="/post/{{ post.slug }}">{{ post.title }}</a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<style>
+    .archive {
+        padding: 5rem 2rem;
+    }
+
+    .section-header {
+        text-align: center;
+        margin-bottom: 5rem;
+    }
+
+    .section-header h1 {
+        font-family: 'Playfair Display', serif;
+        font-size: 3rem;
+        color: var(--mars-orange);
+    }
+
+    .archive-item {
+        display: flex;
+        gap: 2rem;
+        padding: 1.5rem 0;
+        border-bottom: 1px solid var(--crater-gray);
+        align-items: center;
+    }
+
+    .archive-item .date {
+        font-family: monospace;
+        color: var(--text-dim);
+        min-width: 120px;
+    }
+
+    .archive-item a {
+        font-size: 1.2rem;
+        color: var(--text-light);
+        text-decoration: none;
+        transition: color 0.3s;
+    }
+
+    .archive-item a:hover {
+        color: var(--mars-orange);
+    }
+</style>
+{% endblock %}

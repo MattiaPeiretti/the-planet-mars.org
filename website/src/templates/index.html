@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div class="container text-center">
+        <h1>Life on the Light Orange Planet</h1>
+        <p>A researcher's journey across the Martian landscape, exploring the geology and atmosphere of our neighbor.
+        </p>
+
+        <form action="/search" method="GET" class="search-container">
+            <input type="text" name="q" placeholder="Search research notes...">
+            <button type="submit">Search</button>
+        </form>
+
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="value">{{ stats.post_count }}</span>
+                <span class="label">Research Posts</span>
+            </div>
+            <div class="stat-item">
+                <span class="value">{{ stats.total_views }}</span>
+                <span class="label">Total Views</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="posts-section container">
+    {% for post in posts %}
+    <a href="/post/{{ post.slug }}" class="post-card">
+        {% if post.media_url and post.media_type == 'image' %}
+        <div class="post-image"
+            style="background-image: url('{{ post.media_url }}'); height: 300px; background-size: cover; background-position: center;">
+        </div>
+        {% endif %}
+        <div class="post-card-content">
+            <span class="post-meta">{{ post.published_at.strftime('%B %d, %Y') }} • {{ post.views }} views</span>
+            <h2>{{ post.title }}</h2>
+            <div class="post-excerpt">{{ post.content[:250]|safe }}...</div>
+        </div>
+    </a>
+    {% endfor %}
+</section>
+{% endblock %}

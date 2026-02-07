@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - the-planet-mars.org{% endblock %}
+
+{% block content %}
+<section class="admin-dash container">
+    <header class="admin-header">
+        <h1>Mission Control</h1>
+        <div class="admin-actions">
+            <a href="/admin/post/new" class="btn btn-primary">New Research Post</a>
+            <a href="/admin/subscribers" class="btn btn-secondary">Subscribers</a>
+        </div>
+    </header>
+
+    <div class="posts-table-container">
+        <table class="posts-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Views</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in posts %}
+                <tr>
+                    <td>{{ post.title }}</td>
+                    <td><span class="status-badge {{ post.status.value }}">{{ post.status.value }}</span></td>
+                    <td>{{ post.views }}</td>
+                    <td>{{ post.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td class="table-actions">
+                        <a href="/admin/post/edit/{{ post.id }}">Edit</a>
+                        <form action="/admin/post/delete/{{ post.id }}" method="POST"
+                            onsubmit="return confirm('Abort this mission?');">
+                            <button type="submit" class="text-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<style>
+    .admin-dash {
+        padding: 5rem 2rem;
+    }
+
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 3rem;
+    }
+
+    .admin-header h1 {
+        font-family: 'Playfair Display', serif;
+        color: var(--mars-orange);
+    }
+
+    .btn {
+        padding: 0.8rem 1.5rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+    }
+
+    .btn-primary {
+        background: var(--mars-orange);
+        color: var(--space-black);
+    }
+
+    .btn-secondary {
+        border: 1px solid var(--text-dim);
+        color: var(--text-light);
+        margin-left: 1rem;
+    }
+
+    .posts-table-container {
+        background: var(--crater-gray);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .posts-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    .posts-table th,
+    .posts-table td {
+        padding: 1.5rem;
+        border-bottom: 1px solid #333;
+    }
+
+    .posts-table th {
+        color: var(--text-dim);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+    }
+
+    .status-badge {
+        padding: 0.3rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+    }
+
+    .status-badge.published {
+        background: rgba(76, 175, 80, 0.2);
+        color: #8bc34a;
+    }
+
+    .status-badge.draft {
+        background: rgba(255, 179, 71, 0.2);
+        color: var(--mars-orange);
+    }
+
+    .table-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .table-actions a {
+        color: var(--mars-orange);
+        text-decoration: none;
+    }
+
+    .text-danger {
+        color: #f44336;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: inherit;
+    }
+</style>
+{% endblock %}

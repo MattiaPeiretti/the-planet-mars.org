@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results for "{{ query }}" - the-planet-mars.org{% endblock %}
+
+{% block content %}
+<section class="search-results container" style="padding: 5rem 2rem;">
+    <header style="margin-bottom: 4rem;">
+        <h1>Search Results</h1>
+        <p>Found {{ posts|length }} entries matching "{{ query }}"</p>
+    </header>
+
+    {% if posts %}
+    <div class="posts-list">
+        {% for post in posts %}
+        <article style="margin-bottom: 3rem; border-bottom: 1px solid var(--crater-gray); padding-bottom: 2rem;">
+            <span class="post-meta">{{ post.published_at.strftime('%Y-%m-%d') }}</span>
+            <h2 style="font-family: 'Playfair Display', serif;"><a href="/post/{{ post.slug }}"
+                    style="color: var(--mars-orange); text-decoration: none;">{{ post.title }}</a></h2>
+            <div style="color: var(--text-dim);">{{ post.content[:200]|striptags }}...</div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No research matches your query.</p>
+    {% endif %}
+</section>
+{% endblock %}
