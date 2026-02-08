@@ -167,11 +167,9 @@ async def admin_post_new_get(request: Request):
 async def admin_post_new_post(request: Request, repo: PostRepository = Depends(get_post_repo)):
     if not get_current_admin(request):
         return RedirectResponse("/admin/login")
-    slug = form.get("slug")
-    if not slug:
-        slug = slugify(form.get("title"))
-    else:
-        slug = slugify(slug)
+    form = await request.form()
+    author_tags = [t.strip() for t in form.get("tags", "").split(",") if t.strip()]
+    slug = slugify(form.get("title"))
     
     post = Post.create(
         title=form.get("title"),
@@ -200,7 +198,7 @@ async def admin_post_edit_post(post_id: str, request: Request, repo: PostReposit
     post = await repo.find_by_id(post_id)
     form = await request.form()
     post.title = form.get("title")
-    post.slug = slugify(form.get("slug", post.slug))
+    post.slug = slugify(post.title)
     post.content = form.get("content")
     post.media_url = form.get("media_url")
     post.media_type = form.get("media_type")

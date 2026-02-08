@@ -69,7 +69,7 @@ nav {
 .hero {
     padding: 5rem 0;
     text-align: center;
-    background: linear-gradient(to bottom, rgba(13,13,13,0.8), var(--space-black)), url('/static/mars_bg.jpg');
+    background: linear-gradient(to bottom, rgba(13, 13, 13, 0.8), var(--space-black)), url('/static/mars_bg.jpg');
     background-size: cover;
     background-position: center;
 }
@@ -140,37 +140,101 @@ nav {
 /* Post Grid */
 .posts-section {
     padding: 5rem 0;
+    max-width: 600px;
+    /* Narrower width requested */
+    margin: 0 auto;
+}
+
+.post-card-wrapper {
+    margin-bottom: 4rem;
+    max-width: 600px;
 }
 
 .post-card {
-    display: block;
+    display: flex;
+    flex-direction: column;
     text-decoration: none;
     color: inherit;
     background: var(--crater-gray);
-    margin-bottom: 2rem;
     border-radius: 12px;
     overflow: hidden;
-    transition: transform 0.3s, box-shadow 0.3s;
+    transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.4s;
+    border: 1px solid #222;
 }
 
 .post-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(255, 179, 71, 0.1);
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(255, 179, 71, 0.15);
+    border-color: var(--mars-orange);
+}
+
+.post-visual {
+    width: 100%;
+    height: 450px;
+    background: #000;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.media-content {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+}
+
+.post-card:hover .media-content {
+    transform: scale(1.05);
+}
+
+.media-placeholder {
+    font-family: 'Playfair Display', serif;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    opacity: 0.5;
 }
 
 .post-card-content {
-    padding: 2rem;
+    padding: 3rem;
+}
+
+.post-meta-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--mars-orange);
 }
 
 .post-card h2 {
     font-family: 'Playfair Display', serif;
-    font-size: 2rem;
-    margin-bottom: 1rem;
+    font-size: 2.8rem;
+    line-height: 1.2;
+    margin-bottom: 2rem;
 }
 
-.post-meta {
-    font-size: 0.9rem;
+.post-excerpt {
+    font-size: 1.1rem;
     color: var(--text-dim);
+    line-height: 1.8;
+    margin-bottom: 2.5rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.read-more {
+    font-weight: 600;
+    color: var(--mars-orange);
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
 }
 
 /* Footer */

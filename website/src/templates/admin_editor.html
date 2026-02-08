@@ -21,17 +21,10 @@
                 placeholder="e.g. Discovery of Brine in Gale Crater">
         </div>
 
-        <div class="form-row">
-            <div class="form-group flex-1">
-                <label for="slug">Slug (URL path)</label>
-                <input type="text" name="slug" id="slug" value="{{ post.slug if post else '' }}" required
-                    placeholder="discovery-of-brine">
-            </div>
-            <div class="form-group flex-1">
-                <label for="tags">Tags (comma separated)</label>
-                <input type="text" name="tags" id="tags" value="{{ post.tags|join(', ') if post else '' }}"
-                    placeholder="geology, water, nasa">
-            </div>
+        <div class="form-group">
+            <label for="tags">Tags (comma separated)</label>
+            <input type="text" name="tags" id="tags" value="{{ post.tags|join(', ') if post else '' }}"
+                placeholder="geology, water, nasa">
         </div>
 
         <div class="form-row">
