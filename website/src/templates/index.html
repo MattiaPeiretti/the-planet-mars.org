@@ -34,7 +34,7 @@
                 {% if post.media_type == 'image' %}
                 <img src="{{ post.media_url }}" alt="{{ post.title }}" class="media-content">
                 {% elif post.media_type == 'video' %}
-                <video src="{{ post.media_url }}" autoplay muted loop playsinline class="media-content"></video>
+                <video src="{{ post.media_url }}" muted loop playsinline class="media-content"></video>
                 {% endif %}
                 {% else %}
                 <div class="media-placeholder">Mars Exploratory Data</div>
@@ -49,7 +49,7 @@
                 <h2>{{ post.title }}</h2>
                 <div class="post-excerpt">
                     {% set content_text = post.content|striptags %}
-                    {{ content_text[:1200] }}...
+                    {{ content_text[:2400] }}...
                 </div>
                 <span class="read-more">Complete Research Log &rarr;</span>
             </div>
@@ -57,4 +57,34 @@
     </div>
     {% endfor %}
 </section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const videos = document.querySelectorAll('video.media-content');
+
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.6 // Play when 60% visible
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const video = entry.target;
+                if (entry.isIntersecting) {
+                    video.play().catch(error => {
+                        // Silent catch for autoplay restrictions
+                        console.log("Autoplay check:", error);
+                    });
+                } else {
+                    video.pause();
+                }
+            });
+        }, observerOptions);
+
+        videos.forEach(video => {
+            observer.observe(video);
+        });
+    });
+</script>
 {% endblock %}

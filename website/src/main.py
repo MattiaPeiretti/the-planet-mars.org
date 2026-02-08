@@ -10,6 +10,7 @@ from starlette.responses import RedirectResponse
 import bcrypt
 from typing import List, Optional
 from src.domain.models import Post, Subscriber, PostStatus, Admin
+from src.seed_data import SEED_VIDEOS
 from slugify import slugify
 
 
@@ -224,3 +225,23 @@ async def admin_subscribers(request: Request, repo: SubscriberRepository = Depen
         return RedirectResponse("/admin/login")
     subs = await repo.list_active()
     return templates.TemplateResponse("admin_subscribers.html", {"request": request, "subscribers": subs})
+
+@app.post("/admin/seed")
+async def admin_seed(request: Request, repo: PostRepository = Depends(get_post_repo)):
+    if not get_current_admin(request):
+        return RedirectResponse("/admin/login")
+    
+    import random
+    for item in SEED_VIDEOS:
+        post = Post.create(
+            title=item["title"],
+            slug=slugify(item["title"]),
+            content=item["description"],
+            media_url=item["sources"][0],
+            media_type="video",
+            tags=[random.choice(["geology", "atmosphere", "water", "exploration", "mission-log"])]
+        )
+        post.publish()
+        await repo.save(post)
+    
+    return RedirectResponse("/admin", status_code=303)
