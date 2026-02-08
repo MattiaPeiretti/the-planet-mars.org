@@ -99,6 +99,23 @@ async def subscribe(request: Request, repo: SubscriberRepository = Depends(get_s
         await repo.save(sub)
     return RedirectResponse("/", status_code=303)
 
+@app.get("/api/posts")
+async def api_list_posts(offset: int = 0, limit: int = 5, repo: PostRepository = Depends(get_post_repo)):
+    posts = await repo.list_published(limit=limit, offset=offset)
+    return [
+        {
+            "id": p.id,
+            "title": p.title,
+            "slug": p.slug,
+            "content": p.content,
+            "media_url": p.media_url,
+            "media_type": p.media_type,
+            "tags": p.tags,
+            "published_at": p.published_at.isoformat() if p.published_at else None,
+            "views": p.views
+        } for p in posts
+    ]
+
 @app.post("/post/{slug}/like")
 async def post_like(slug: str, repo: PostRepository = Depends(get_post_repo)):
     post = await repo.find_by_slug(slug)

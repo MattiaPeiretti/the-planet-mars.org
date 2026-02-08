@@ -58,33 +58,128 @@
     {% endfor %}
 </section>
 
+<div id="posts-loader" class="container text-center" style="padding: 2rem; opacity: 0;">
+    <p class="text-dim">Consulting the Surface Data...</p>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const videos = document.querySelectorAll('video.media-content');
-
-        const observerOptions = {
+        // --- Video Observation Logic ---
+        const videoObserverOptions = {
             root: null,
             rootMargin: '0px',
-            threshold: 0.6 // Play when 60% visible
+            threshold: 0.6
         };
 
-        const observer = new IntersectionObserver((entries) => {
+        const videoObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 const video = entry.target;
                 if (entry.isIntersecting) {
-                    video.play().catch(error => {
-                        // Silent catch for autoplay restrictions
-                        console.log("Autoplay check:", error);
-                    });
+                    video.play().catch(error => console.log("Autoplay check:", error));
                 } else {
                     video.pause();
                 }
             });
-        }, observerOptions);
+        }, videoObserverOptions);
 
-        videos.forEach(video => {
-            observer.observe(video);
-        });
+        function observeVideos(container) {
+            const videos = (container || document).querySelectorAll('video.media-content');
+            videos.forEach(video => videoObserver.observe(video));
+        }
+
+        observeVideos();
+
+        // --- Infinite Scroll Logic ---
+        let offset = 5; // Initial limit was 5
+        const limit = 5;
+        let loading = false;
+        let allLoaded = false;
+        const postsSection = document.querySelector('.posts-section');
+        const loader = document.getElementById('posts-loader');
+
+        const scrollObserver = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && !loading && !allLoaded) {
+                loadMorePosts();
+            }
+        }, { threshold: 0.1 });
+
+        scrollObserver.observe(loader);
+
+        async function loadMorePosts() {
+            loading = true;
+            loader.style.opacity = "1";
+
+            try {
+                const response = await fetch(`/api/posts?offset=${offset}&limit=${limit}`);
+                const posts = await response.json();
+
+                if (posts.length === 0) {
+                    allLoaded = true;
+                    loader.innerHTML = '<p class="text-dim">End of Research Logs.</p>';
+                    return;
+                }
+
+                posts.forEach(post => {
+                    const postHTML = createPostHTML(post);
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'post-card-wrapper';
+                    wrapper.innerHTML = postHTML;
+                    postsSection.appendChild(wrapper);
+                    observeVideos(wrapper);
+                });
+
+                offset += posts.length;
+            } catch (error) {
+                console.error("Failed to fetch more logs:", error);
+            } finally {
+                loading = false;
+                if (!allLoaded) loader.style.opacity = "0";
+            }
+        }
+
+        function createPostHTML(post) {
+            let mediaHTML = '';
+            if (post.media_url) {
+                if (post.media_type === 'image') {
+                    mediaHTML = `<img src="${post.media_url}" alt="${post.title}" class="media-content">`;
+                } else {
+                    mediaHTML = `<video src="${post.media_url}" muted loop playsinline class="media-content"></video>`;
+                }
+            } else {
+                mediaHTML = `<div class="media-placeholder">Mars Exploratory Data</div>`;
+            }
+
+            const date = new Date(post.published_at).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+
+            // Strip tags for excerpt (basic implementation)
+            const tmp = document.createElement("DIV");
+            tmp.innerHTML = post.content;
+            const contentText = tmp.textContent || tmp.innerText || "";
+            const excerpt = contentText.substring(0, 2400);
+
+            return `
+                <a href="/post/${post.slug}" class="post-card">
+                    <div class="post-visual">
+                        ${mediaHTML}
+                    </div>
+                    <div class="post-card-content">
+                        <div class="post-meta-top">
+                            <span class="date">${date}</span>
+                            <span class="views">${post.views} views</span>
+                        </div>
+                        <h2>${post.title}</h2>
+                        <div class="post-excerpt">
+                            ${excerpt}...
+                        </div>
+                        <span class="read-more">Complete Research Log &rarr;</span>
+                    </div>
+                </a>
+            `;
+        }
     });
 </script>
 {% endblock %}
