@@ -41,10 +41,11 @@
         {{ post.content|safe }}
     </div>
 
-    <div class="post-actions">
-        <form action="/post/{{ post.slug }}/like" method="POST">
-            <button type="submit" class="like-button">Like Research</button>
-        </form>
+    <div class="post-actions-bar"
+        style="justify-content: center; border-bottom: 1px solid #222; padding-bottom: 1.5rem; margin-bottom: 3rem;">
+        <button class="action-btn like-btn" data-slug="{{ post.slug }}">Like ({{ post.likes }})</button>
+        <button class="action-btn share-btn" data-url="{{ request.url }}" data-title="{{ post.title }}">Share</button>
+        <button class="action-btn sub-btn">Subscribe</button>
     </div>
 </article>
 

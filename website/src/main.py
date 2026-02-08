@@ -6,12 +6,13 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from src.persistence.repositories import PostRepository, SubscriberRepository, AdminRepository
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, JSONResponse
 import bcrypt
 from typing import List, Optional
 from src.domain.models import Post, Subscriber, PostStatus, Admin
 from src.seed_data import SEED_VIDEOS
 from slugify import slugify
+from fastapi.responses import Response
 
 
 # Database connection pool
@@ -97,6 +98,9 @@ async def subscribe(request: Request, repo: SubscriberRepository = Depends(get_s
     if email:
         sub = Subscriber.create(email)
         await repo.save(sub)
+    
+    if request.headers.get("accept") == "application/json":
+        return {"success": True, "message": "Subscription established."}
     return RedirectResponse("/", status_code=303)
 
 @app.get("/api/posts")
@@ -112,17 +116,37 @@ async def api_list_posts(offset: int = 0, limit: int = 5, repo: PostRepository =
             "media_type": p.media_type,
             "tags": p.tags,
             "published_at": p.published_at.isoformat() if p.published_at else None,
-            "views": p.views
+            "views": p.views,
+            "likes": p.likes
         } for p in posts
     ]
 
 @app.post("/post/{slug}/like")
-async def post_like(slug: str, repo: PostRepository = Depends(get_post_repo)):
+async def post_like(slug: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
+    liked_posts = request.cookies.get("liked_posts", "")
+    liked_list = liked_posts.split(",") if liked_posts else []
+    
+    if slug in liked_list:
+        if request.headers.get("accept") == "application/json":
+            return {"success": False, "message": "Already acknowledged."}
+        return RedirectResponse(f"/post/{slug}", status_code=303)
+
     post = await repo.find_by_slug(slug)
     if post:
-        post.increment_likes()
+        post.likes += 1
         await repo.save(post)
-    return RedirectResponse(f"/post/{slug}", status_code=303)
+    
+    liked_list.append(slug)
+    new_cookie_val = ",".join(liked_list)
+    
+    response = None
+    if request.headers.get("accept") == "application/json":
+        response = JSONResponse({"success": True, "likes": post.likes if post else 0})
+    else:
+        response = RedirectResponse(f"/post/{slug}", status_code=303)
+    
+    response.set_cookie(key="liked_posts", value=new_cookie_val, max_age=31536000) # 1 year
+    return response
 
 @app.get("/search")
 async def search(q: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
@@ -148,7 +172,6 @@ async def rss_feed(repo: PostRepository = Depends(get_post_repo)):
         </item>
         """
     rss += "</channel></rss>"
-    from fastapi.responses import Response
     return Response(content=rss, media_type="application/xml")
 
 # --- ADMIN ROUTES ---

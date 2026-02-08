@@ -28,8 +28,8 @@
 <section class="posts-section container">
     {% for post in posts %}
     <div class="post-card-wrapper">
-        <a href="/post/{{ post.slug }}" class="post-card">
-            <div class="post-visual">
+        <div class="post-card">
+            <a href="/post/{{ post.slug }}" class="post-visual">
                 {% if post.media_url %}
                 {% if post.media_type == 'image' %}
                 <img src="{{ post.media_url }}" alt="{{ post.title }}" class="media-content">
@@ -39,21 +39,37 @@
                 {% else %}
                 <div class="media-placeholder">Mars Exploratory Data</div>
                 {% endif %}
-            </div>
+            </a>
 
             <div class="post-card-content">
                 <div class="post-meta-top">
                     <span class="date">{{ post.published_at.strftime('%B %d, %Y') }}</span>
                     <span class="views">{{ post.views }} views</span>
                 </div>
-                <h2>{{ post.title }}</h2>
+                <a href="/post/{{ post.slug }}" class="post-title-link">
+                    <h2>{{ post.title }}</h2>
+                </a>
                 <div class="post-excerpt">
                     {% set content_text = post.content|striptags %}
                     {{ content_text[:2400] }}...
                 </div>
-                <span class="read-more">Complete Research Log &rarr;</span>
+
+                <div class="post-actions-bar">
+                    <button class="action-btn like-btn" data-slug="{{ post.slug }}">
+                        <span class="icon">♥</span> Like ({{ post.likes }})
+                    </button>
+                    <button class="action-btn share-btn" data-url="{{ request.base_url }}post/{{ post.slug }}"
+                        data-title="{{ post.title }}">
+                        <span class="icon">↗</span> Share
+                    </button>
+                    <button class="action-btn sub-btn">
+                        <span class="icon">✉</span> Subscribe
+                    </button>
+                </div>
+
+                <a href="/post/{{ post.slug }}" class="read-more">Complete Research Log &rarr;</a>
             </div>
-        </a>
+        </div>
     </div>
     {% endfor %}
 </section>
@@ -162,22 +178,35 @@
             const excerpt = contentText.substring(0, 2400);
 
             return `
-                <a href="/post/${post.slug}" class="post-card">
-                    <div class="post-visual">
+                <div class="post-card">
+                    <a href="/post/${post.slug}" class="post-visual">
                         ${mediaHTML}
-                    </div>
+                    </a>
                     <div class="post-card-content">
                         <div class="post-meta-top">
                             <span class="date">${date}</span>
                             <span class="views">${post.views} views</span>
                         </div>
-                        <h2>${post.title}</h2>
+                        <a href="/post/${post.slug}" class="post-title-link">
+                            <h2>${post.title}</h2>
+                        </a>
                         <div class="post-excerpt">
                             ${excerpt}...
                         </div>
-                        <span class="read-more">Complete Research Log &rarr;</span>
+                        <div class="post-actions-bar">
+                            <button class="action-btn like-btn" data-slug="${post.slug}">
+                                <span class="icon">♥</span> Like (${post.likes})
+                            </button>
+                            <button class="action-btn share-btn" data-url="${window.location.origin}/post/${post.slug}" data-title="${post.title}">
+                                <span class="icon">↗</span> Share
+                            </button>
+                            <button class="action-btn sub-btn">
+                                <span class="icon">✉</span> Subscribe
+                            </button>
+                        </div>
+                        <a href="/post/${post.slug}" class="read-more">Complete Research Log &rarr;</a>
                     </div>
-                </a>
+                </div>
             `;
         }
     });

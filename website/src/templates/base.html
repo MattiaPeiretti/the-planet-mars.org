@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,9 +8,12 @@
     <link rel="stylesheet" href="/static/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap"
+        rel="stylesheet">
     {% block head %}{% endblock %}
 </head>
+
 <body class="dark-theme">
     <header>
         <nav class="container">
@@ -44,5 +48,99 @@
             <p>&copy; 2026 the-planet-mars.org. No comments, just data.</p>
         </div>
     </footer>
+    <div id="subscribe-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2>Join the Expedition</h2>
+            <p>Get instant telemetry and research logs delivered to your inbox as they are transmitted from the surface.
+            </p>
+            <form id="modal-subscribe-form" class="modal-form">
+                <input type="email" name="email" placeholder="Researcher Email Address" required>
+                <button type="submit">Establish Connection</button>
+            </form>
+            <div id="modal-msg" style="margin-top: 1rem; color: var(--mars-orange); display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        function openModal() {
+            document.getElementById('subscribe-modal').classList.add('active');
+        }
+        function closeModal() {
+            document.getElementById('subscribe-modal').classList.remove('active');
+            document.getElementById('modal-msg').style.display = 'none';
+        }
+
+        document.getElementById('modal-subscribe-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const email = form.email.value;
+            const msgDiv = document.getElementById('modal-msg');
+
+            try {
+                const response = await fetch('/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'application/json'
+                    },
+                    body: `email=${encodeURIComponent(email)}`
+                });
+                const result = await response.json();
+                if (result.success) {
+                    msgDiv.textContent = "Telemetry link established!";
+                    msgDiv.style.display = 'block';
+                    setTimeout(closeModal, 2000);
+                }
+            } catch (err) {
+                console.error("Subscription error:", err);
+            }
+        });
+
+        // Global Social Handlers
+        document.addEventListener('click', async (e) => {
+            const likeBtn = e.target.closest('.like-btn');
+            const shareBtn = e.target.closest('.share-btn');
+            const subBtn = e.target.closest('.sub-btn');
+
+            if (likeBtn) {
+                e.preventDefault();
+                const slug = likeBtn.dataset.slug;
+                try {
+                    const response = await fetch(`/post/${slug}/like`, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        likeBtn.classList.add('liked');
+                        likeBtn.innerHTML = `Liked (${result.likes})`;
+                    } else {
+                        const originalHTML = likeBtn.innerHTML;
+                        likeBtn.innerHTML = result.message;
+                        setTimeout(() => { likeBtn.innerHTML = originalHTML; }, 2000);
+                    }
+                } catch (err) { console.error("Like error:", err); }
+            }
+
+            if (shareBtn) {
+                e.preventDefault();
+                const url = shareBtn.dataset.url || window.location.href;
+                const title = shareBtn.dataset.title || document.title;
+                if (navigator.share) {
+                    navigator.share({ title, url }).catch(console.error);
+                } else {
+                    navigator.clipboard.writeText(url);
+                    alert("Surface Link copied to clipboard!");
+                }
+            }
+
+            if (subBtn) {
+                e.preventDefault();
+                openModal();
+            }
+        });
+    </script>
 </body>
+
 </html>
