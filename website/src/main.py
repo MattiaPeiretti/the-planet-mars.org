@@ -108,12 +108,13 @@ async def admin_post_new_post(request: Request, repo: PostRepository = Depends(g
     
     post = Post.create(
         title=form.get("title"),
+        title_it=form.get("title_it"),
         slug=slug,
         content=form.get("content"),
+        content_it=form.get("content_it"),
         media_url=form.get("media_url"),
         media_type=form.get("media_type"),
-        tags=[t.strip() for t in form.get("tags", "").split(",") if t.strip()],
-        language=form.get("language", "en")
+        tags=[t.strip() for t in form.get("tags", "").split(",") if t.strip()]
     )
     if form.get("status") == "published":
         post.publish()
@@ -134,12 +135,13 @@ async def admin_post_edit_post(post_id: str, request: Request, repo: PostReposit
     post = await repo.find_by_id(post_id)
     form = await request.form()
     post.title = form.get("title")
+    post.title_it = form.get("title_it")
     post.slug = slugify(post.title)
     post.content = form.get("content")
+    post.content_it = form.get("content_it")
     post.media_url = form.get("media_url")
     post.media_type = form.get("media_type")
     post.tags = [t.strip() for t in form.get("tags", "").split(",") if t.strip()]
-    post.language = form.get("language", "en")
     if form.get("status") == "published" and post.status != PostStatus.PUBLISHED:
         post.publish()
     elif form.get("status") == "draft":
@@ -206,7 +208,7 @@ async def post_detail(lang: str, slug: str, request: Request, repo: PostReposito
     if lang not in SUPPORTED_LANGS:
         raise HTTPException(status_code=404)
     post = await repo.find_by_slug(slug)
-    if not post or post.language != lang:
+    if not post:
         return templates.TemplateResponse("404.html", {"request": request, "lang": lang}, status_code=404)
     post.increment_views()
     await repo.save(post)
@@ -244,8 +246,10 @@ async def api_list_posts(lang: str, offset: int = 0, limit: int = 5, repo: PostR
         {
             "id": p.id,
             "title": p.title,
+            "title_it": p.title_it,
             "slug": p.slug,
             "content": p.content,
+            "content_it": p.content_it,
             "media_url": p.media_url,
             "media_type": p.media_type,
             "tags": p.tags,

@@ -14,9 +14,23 @@
         {% for post in posts %}
         <article style="margin-bottom: 3rem; border-bottom: 1px solid var(--crater-gray); padding-bottom: 2rem;">
             <span class="post-meta">{{ post.published_at.strftime('%Y-%m-%d') }}</span>
-            <h2 style="font-family: 'Playfair Display', serif;"><a href="/{{ lang }}/post/{{ post.slug }}"
-                    style="color: var(--mars-orange); text-decoration: none;">{{ post.title }}</a></h2>
-            <div style="color: var(--text-dim);">{{ post.content[:200]|striptags }}...</div>
+            <h2 style="font-family: 'Playfair Display', serif;">
+                <a href="/{{ lang }}/post/{{ post.slug }}" style="color: var(--mars-orange); text-decoration: none;">
+                    {% if lang == 'it' and post.title_it %}
+                    {{ post.title_it }}
+                    {% else %}
+                    {{ post.title }}
+                    {% endif %}
+                </a>
+            </h2>
+            <div style="color: var(--text-dim);">
+                {% if lang == 'it' and post.content_it %}
+                {{ post.content_it[:200]|striptags }}
+                {% else %}
+                {{ post.content[:200]|striptags }}
+                {% endif %}
+                ...
+            </div>
         </article>
         {% endfor %}
     </div>

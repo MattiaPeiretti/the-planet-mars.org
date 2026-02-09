@@ -25,9 +25,11 @@
                 <a href="/{{ lang or 'en' }}/archive">Archive</a>
                 <a href="/{{ lang or 'en' }}/rss">RSS</a>
                 <div class="lang-switcher">
-                    <a href="/en" class="{% if lang == 'en' %}active{% endif %}">EN</a>
+                    <a href="{{ request.url.path.replace('/' + lang, '/en', 1) if lang else '/en' }}"
+                        class="{% if lang == 'en' %}active{% endif %}">EN</a>
                     <span class="sep">|</span>
-                    <a href="/it" class="{% if lang == 'it' %}active{% endif %}">IT</a>
+                    <a href="{{ request.url.path.replace('/' + lang, '/it', 1) if lang else '/it' }}"
+                        class="{% if lang == 'it' %}active{% endif %}">IT</a>
                 </div>
             </div>
         </nav>

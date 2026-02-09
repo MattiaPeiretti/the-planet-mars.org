@@ -9,12 +9,14 @@ class PostRepository:
 
     async def save(self, post: Post):
         query = """
-        INSERT INTO posts (id, title, slug, content, media_url, media_type, tags, status, language, views, likes, created_at, published_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        INSERT INTO posts (id, title, title_it, slug, content, content_it, media_url, media_type, tags, status, language, views, likes, created_at, published_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title,
+            title_it = EXCLUDED.title_it,
             slug = EXCLUDED.slug,
             content = EXCLUDED.content,
+            content_it = EXCLUDED.content_it,
             media_url = EXCLUDED.media_url,
             media_type = EXCLUDED.media_type,
             tags = EXCLUDED.tags,
@@ -26,7 +28,7 @@ class PostRepository:
         """
         await self.pool.execute(
             query,
-            post.id, post.title, post.slug, post.content, post.media_url,
+            post.id, post.title, post.title_it, post.slug, post.content, post.content_it, post.media_url,
             post.media_type, post.tags, post.status.value, post.language,
             post.views, post.likes, post.created_at, post.published_at
         )
@@ -44,9 +46,11 @@ class PostRepository:
         return None
 
     async def list_published(self, lang: str = "en", limit: int = 10, offset: int = 0) -> List[Post]:
+        # We now return all published posts regardless of original language, 
+        # as each can have translations.
         rows = await self.pool.fetch(
-            "SELECT * FROM posts WHERE status = 'published' AND language = $1 ORDER BY published_at DESC LIMIT $2 OFFSET $3",
-            lang, limit, offset
+            "SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC LIMIT $1 OFFSET $2",
+            limit, offset
         )
         return [self._to_entity(row) for row in rows]
 
@@ -58,14 +62,18 @@ class PostRepository:
         return [self._to_entity(row) for row in rows]
 
     async def search(self, query: str, lang: str = "en") -> List[Post]:
+        # Search in both English and Italian content
         rows = await self.pool.fetch(
-            "SELECT * FROM posts WHERE status = 'published' AND language = $1 AND (title ILIKE $2 OR content ILIKE $2) ORDER BY published_at DESC",
-            lang, f"%{query}%"
+            """SELECT * FROM posts 
+               WHERE status = 'published' 
+               AND (title ILIKE $1 OR content ILIKE $1 OR title_it ILIKE $1 OR content_it ILIKE $1) 
+               ORDER BY published_at DESC""",
+            f"%{query}%"
         )
         return [self._to_entity(row) for row in rows]
 
     async def get_stats(self, lang: str = "en"):
-        row = await self.pool.fetchrow("SELECT COUNT(*) as count, SUM(views) as total_views FROM posts WHERE status = 'published' AND language = $1", lang)
+        row = await self.pool.fetchrow("SELECT COUNT(*) as count, SUM(views) as total_views FROM posts WHERE status = 'published'")
         return {
             "post_count": row["count"] if row else 0,
             "total_views": row["total_views"] if row and row["total_views"] else 0
@@ -75,8 +83,10 @@ class PostRepository:
         return Post(
             id=row["id"],
             title=row["title"],
+            title_it=row.get("title_it"),
             slug=row["slug"],
             content=row["content"],
+            content_it=row.get("content_it"),
             media_url=row["media_url"],
             media_type=row["media_type"],
             tags=row["tags"],

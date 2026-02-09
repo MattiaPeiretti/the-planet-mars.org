@@ -47,10 +47,20 @@
                     <span class="views">{{ post.views }} views</span>
                 </div>
                 <a href="/{{ lang }}/post/{{ post.slug }}" class="post-title-link">
-                    <h2>{{ post.title }}</h2>
+                    <h2>
+                        {% if lang == 'it' and post.title_it %}
+                        {{ post.title_it }}
+                        {% else %}
+                        {{ post.title }}
+                        {% endif %}
+                    </h2>
                 </a>
                 <div class="post-excerpt">
+                    {% if lang == 'it' and post.content_it %}
+                    {% set content_text = post.content_it|striptags %}
+                    {% else %}
                     {% set content_text = post.content|striptags %}
+                    {% endif %}
                     {{ content_text[:2400] }}...
                 </div>
 
@@ -174,7 +184,8 @@
 
             // Strip tags for excerpt (basic implementation)
             const tmp = document.createElement("DIV");
-            tmp.innerHTML = post.content;
+            const rawContent = (lang === 'it' && post.content_it) ? post.content_it : post.content;
+            tmp.innerHTML = rawContent;
             const contentText = tmp.textContent || tmp.innerText || "";
             const excerpt = contentText.substring(0, 2400);
 
@@ -189,7 +200,7 @@
                             <span class="views">${post.views} views</span>
                         </div>
                         <a href="/${lang}/post/${post.slug}" class="post-title-link">
-                            <h2>${post.title}</h2>
+                            <h2>${(lang === 'it' && post.title_it) ? post.title_it : post.title}</h2>
                         </a>
                         <div class="post-excerpt">
                             ${excerpt}...

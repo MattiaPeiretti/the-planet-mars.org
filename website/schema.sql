@@ -1,8 +1,10 @@
 CREATE TABLE IF NOT EXISTS posts (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
+    title_it TEXT,
     slug TEXT NOT NULL UNIQUE,
     content TEXT NOT NULL,
+    content_it TEXT,
     media_url TEXT,
     media_type TEXT,
     tags TEXT[],
@@ -23,3 +25,7 @@ CREATE TABLE IF NOT EXISTS admins (
     username TEXT PRIMARY KEY,
     password_hash TEXT NOT NULL
 );
+
+
+GRANT  USAGE   ON SCHEMA public  TO backend;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO backend ;

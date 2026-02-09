@@ -15,16 +15,25 @@
 
     <form id="post-form" action="{% if post %}/admin/post/edit/{{ post.id }}{% else %}/admin/post/new{% endif %}"
         method="POST">
-        <div class="form-group">
-            <label for="title">Title</label>
-            <input type="text" name="title" id="title" value="{{ post.title if post else '' }}" required
-                placeholder="e.g. Discovery of Brine in Gale Crater">
+        <div class="language-tabs">
+            <button type="button" class="tab-btn active" data-lang="en">English (Base)</button>
+            <button type="button" class="tab-btn" data-lang="it">Italiano (Optional)</button>
         </div>
 
-        <div class="form-group">
-            <label for="tags">Tags (comma separated)</label>
-            <input type="text" name="tags" id="tags" value="{{ post.tags|join(', ') if post else '' }}"
-                placeholder="geology, water, nasa">
+        <div class="lang-section en-section">
+            <div class="form-group">
+                <label for="title">English Title</label>
+                <input type="text" name="title" id="title" value="{{ post.title if post else '' }}" required
+                    placeholder="e.g. Discovery of Brine in Gale Crater">
+            </div>
+        </div>
+
+        <div class="lang-section it-section" style="display: none;">
+            <div class="form-group">
+                <label for="title_it">Italian Title (Fallback to English if empty)</label>
+                <input type="text" name="title_it" id="title_it" value="{{ post.title_it if post else '' }}"
+                    placeholder="e.g. Scoperta di salamoia nel cratere Gale">
+            </div>
         </div>
 
         <div class="form-row">
@@ -43,19 +52,12 @@
         </div>
 
         <div class="form-group">
-            <label for="language">Research Language</label>
-            <select name="language" id="language">
-                <option value="en" {% if post and post.language=='en' %}selected{% endif %}>English (EN)</option>
-                <option value="it" {% if post and post.language=='it' %}selected{% endif %}>Italiano (IT)</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label>Research Content</label>
+            <label id="editor-label">Research Content (English)</label>
             <div id="editor-container" style="height: 400px; background: white; color: black; border-radius: 8px;">
                 {{ post.content|safe if post else '' }}
             </div>
-            <input type="hidden" name="content" id="content-input">
+            <input type="hidden" name="content" id="content-input" value="{{ post.content if post else '' }}">
+            <input type="hidden" name="content_it" id="content-it-input" value="{{ post.content_it if post else '' }}">
         </div>
 
         <div class="editor-footer">
@@ -79,10 +81,51 @@
         }
     });
 
+    const contentInput = document.getElementById('content-input');
+    const contentItInput = document.getElementById('content-it-input');
+    let currentLang = 'en';
+
+    // Tab Switching Logic
+    const tabs = document.querySelectorAll('.tab-btn');
+    const sections = {
+        en: document.querySelector('.en-section'),
+        it: document.querySelector('.it-section')
+    };
+    const editorLabel = document.getElementById('editor-label');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Save current editor content before switching
+            if (currentLang === 'en') {
+                contentInput.value = quill.root.innerHTML;
+            } else {
+                contentItInput.value = quill.root.innerHTML;
+            }
+
+            // Switch active tab UI
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Switch visibility
+            const nextLang = tab.dataset.lang;
+            sections[currentLang].style.display = 'none';
+            sections[nextLang].style.display = 'block';
+
+            // Update editor content
+            currentLang = nextLang;
+            editorLabel.textContent = `Research Content (${currentLang === 'en' ? 'English' : 'Italian'})`;
+            quill.root.innerHTML = currentLang === 'en' ? contentInput.value : contentItInput.value;
+        });
+    });
+
     var form = document.getElementById('post-form');
     form.onsubmit = function () {
-        var content = document.querySelector('input[name=content]');
-        content.value = quill.root.innerHTML;
+        // Final sync of current language
+        if (currentLang === 'en') {
+            contentInput.value = quill.root.innerHTML;
+        } else {
+            contentItInput.value = quill.root.innerHTML;
+        }
         return true;
     };
 </script>
@@ -144,6 +187,32 @@
         justify-content: flex-end;
         gap: 1rem;
         margin-top: 3rem;
+    }
+
+    .language-tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid #333;
+        padding-bottom: 1rem;
+    }
+
+    .tab-btn {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid #333;
+        color: var(--text-dim);
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.8rem;
+        transition: all 0.3s;
+    }
+
+    .tab-btn.active {
+        background: var(--mars-orange);
+        color: var(--space-black);
+        border-color: var(--mars-orange);
     }
 
     .text-dim {

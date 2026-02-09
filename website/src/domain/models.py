@@ -12,30 +12,34 @@ class PostStatus(Enum):
 class Post:
     id: str
     title: str
+    title_it: Optional[str]
     slug: str
     content: str
+    content_it: Optional[str]
     media_url: Optional[str]
     media_type: Optional[str]  # "image" or "video"
     tags: List[str]
     status: PostStatus
-    language: str = "en" # "en" or "it"
+    language: str = "en" # Base language is always en now
     views: int = 0
     likes: int = 0
     created_at: datetime = field(default_factory=datetime.utcnow)
     published_at: Optional[datetime] = None
 
     @classmethod
-    def create(cls, title: str, slug: str, content: str, media_url: Optional[str], media_type: Optional[str], tags: List[str], language: str = "en"):
+    def create(cls, title: str, slug: str, content: str, media_url: Optional[str], media_type: Optional[str], tags: List[str], title_it: Optional[str] = None, content_it: Optional[str] = None):
         return cls(
             id=str(uuid.uuid4()),
             title=title,
+            title_it=title_it,
             slug=slug,
             content=content,
+            content_it=content_it,
             media_url=media_url,
             media_type=media_type,
             tags=tags,
             status=PostStatus.DRAFT,
-            language=language
+            language="en"
         )
 
     def publish(self):
