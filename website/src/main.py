@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 import asyncpg
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from src.persistence.repositories import PostRepository, SubscriberRepository, AdminRepository
@@ -13,6 +13,9 @@ from src.domain.models import Post, Subscriber, PostStatus, Admin
 from src.seed_data import SEED_VIDEOS
 from slugify import slugify
 from fastapi.responses import Response
+from fastapi.responses import JSONResponse
+
+SUPPORTED_LANGS = ["en", "it"]
 
 
 # Database connection pool
@@ -65,115 +68,6 @@ def get_current_admin(request: Request):
         return None
     return user
 
-# --- PUBLIC ROUTES ---
-
-@app.get("/")
-async def home(request: Request, repo: PostRepository = Depends(get_post_repo)):
-    posts = await repo.list_published(limit=5)
-    stats = await repo.get_stats()
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "posts": posts,
-        "stats": stats
-    })
-
-@app.get("/post/{slug}")
-async def post_detail(slug: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
-    post = await repo.find_by_slug(slug)
-    if not post:
-        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
-    post.increment_views()
-    await repo.save(post)
-    return templates.TemplateResponse("post.html", {"request": request, "post": post})
-
-@app.get("/archive")
-async def archive(request: Request, repo: PostRepository = Depends(get_post_repo)):
-    posts = await repo.list_published(limit=100)
-    return templates.TemplateResponse("archive.html", {"request": request, "posts": posts})
-
-@app.post("/subscribe")
-async def subscribe(request: Request, repo: SubscriberRepository = Depends(get_subscriber_repo)):
-    form = await request.form()
-    email = form.get("email")
-    if email:
-        sub = Subscriber.create(email)
-        await repo.save(sub)
-    
-    if request.headers.get("accept") == "application/json":
-        return {"success": True, "message": "Subscription established."}
-    return RedirectResponse("/", status_code=303)
-
-@app.get("/api/posts")
-async def api_list_posts(offset: int = 0, limit: int = 5, repo: PostRepository = Depends(get_post_repo)):
-    posts = await repo.list_published(limit=limit, offset=offset)
-    return [
-        {
-            "id": p.id,
-            "title": p.title,
-            "slug": p.slug,
-            "content": p.content,
-            "media_url": p.media_url,
-            "media_type": p.media_type,
-            "tags": p.tags,
-            "published_at": p.published_at.isoformat() if p.published_at else None,
-            "views": p.views,
-            "likes": p.likes
-        } for p in posts
-    ]
-
-@app.post("/post/{slug}/like")
-async def post_like(slug: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
-    liked_posts = request.cookies.get("liked_posts", "")
-    liked_list = liked_posts.split(",") if liked_posts else []
-    
-    if slug in liked_list:
-        if request.headers.get("accept") == "application/json":
-            return {"success": False, "message": "Already acknowledged."}
-        return RedirectResponse(f"/post/{slug}", status_code=303)
-
-    post = await repo.find_by_slug(slug)
-    if post:
-        post.likes += 1
-        await repo.save(post)
-    
-    liked_list.append(slug)
-    new_cookie_val = ",".join(liked_list)
-    
-    response = None
-    if request.headers.get("accept") == "application/json":
-        response = JSONResponse({"success": True, "likes": post.likes if post else 0})
-    else:
-        response = RedirectResponse(f"/post/{slug}", status_code=303)
-    
-    response.set_cookie(key="liked_posts", value=new_cookie_val, max_age=31536000) # 1 year
-    return response
-
-@app.get("/search")
-async def search(q: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
-    posts = await repo.search(q)
-    return templates.TemplateResponse("search.html", {"request": request, "posts": posts, "query": q})
-
-@app.get("/rss")
-async def rss_feed(repo: PostRepository = Depends(get_post_repo)):
-    posts = await repo.list_published()
-    rss = """<?xml version="1.0" encoding="UTF-8" ?>
-    <rss version="2.0">
-      <channel>
-        <title>the-planet-mars.org</title>
-        <link>https://the-planet-mars.org</link>
-        <description>Scientific news from Mars.</description>
-    """
-    for post in posts:
-        rss += f"""
-        <item>
-          <title>{post.title}</title>
-          <link>https://the-planet-mars.org/post/{post.slug}</link>
-          <pubDate>{post.published_at.strftime('%a, %d %b %Y %H:%M:%S GMT') if post.published_at else ''}</pubDate>
-        </item>
-        """
-    rss += "</channel></rss>"
-    return Response(content=rss, media_type="application/xml")
-
 # --- ADMIN ROUTES ---
 
 @app.get("/admin/login")
@@ -209,7 +103,7 @@ async def admin_post_new_post(request: Request, repo: PostRepository = Depends(g
     if not get_current_admin(request):
         return RedirectResponse("/admin/login")
     form = await request.form()
-    author_tags = [t.strip() for t in form.get("tags", "").split(",") if t.strip()]
+    # author_tags = [t.strip() for t in form.get("tags", "").split(",") if t.strip()]
     slug = slugify(form.get("title"))
     
     post = Post.create(
@@ -218,7 +112,8 @@ async def admin_post_new_post(request: Request, repo: PostRepository = Depends(g
         content=form.get("content"),
         media_url=form.get("media_url"),
         media_type=form.get("media_type"),
-        tags=[t.strip() for t in form.get("tags", "").split(",") if t.strip()]
+        tags=[t.strip() for t in form.get("tags", "").split(",") if t.strip()],
+        language=form.get("language", "en")
     )
     if form.get("status") == "published":
         post.publish()
@@ -244,6 +139,7 @@ async def admin_post_edit_post(post_id: str, request: Request, repo: PostReposit
     post.media_url = form.get("media_url")
     post.media_type = form.get("media_type")
     post.tags = [t.strip() for t in form.get("tags", "").split(",") if t.strip()]
+    post.language = form.get("language", "en")
     if form.get("status") == "published" and post.status != PostStatus.PUBLISHED:
         post.publish()
     elif form.get("status") == "draft":
@@ -285,3 +181,136 @@ async def admin_seed(request: Request, repo: PostRepository = Depends(get_post_r
         await repo.save(post)
     
     return RedirectResponse("/admin", status_code=303)
+
+# --- PUBLIC ROUTES ---
+
+@app.get("/")
+async def root_redirect():
+    return RedirectResponse("/en")
+
+@app.get("/{lang}")
+async def home(lang: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
+    if lang not in SUPPORTED_LANGS:
+        raise HTTPException(status_code=404)
+    posts = await repo.list_published(lang=lang, limit=5)
+    stats = await repo.get_stats(lang=lang)
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "posts": posts,
+        "stats": stats,
+        "lang": lang
+    })
+
+@app.get("/{lang}/post/{slug}")
+async def post_detail(lang: str, slug: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
+    if lang not in SUPPORTED_LANGS:
+        raise HTTPException(status_code=404)
+    post = await repo.find_by_slug(slug)
+    if not post or post.language != lang:
+        return templates.TemplateResponse("404.html", {"request": request, "lang": lang}, status_code=404)
+    post.increment_views()
+    await repo.save(post)
+    return templates.TemplateResponse("post.html", {"request": request, "post": post, "lang": lang})
+
+@app.get("/{lang}/archive")
+async def archive(lang: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
+    if lang not in SUPPORTED_LANGS:
+        raise HTTPException(status_code=404)
+    posts = await repo.list_published(lang=lang, limit=100)
+    return templates.TemplateResponse("archive.html", {"request": request, "posts": posts, "lang": lang})
+
+@app.post("/{lang}/subscribe")
+async def subscribe(lang: str, request: Request, repo: SubscriberRepository = Depends(get_subscriber_repo)):
+    if lang not in SUPPORTED_LANGS:
+        raise HTTPException(status_code=404)
+    form = await request.form()
+    # ... (no change to subscription logic itself)
+    form = await request.form()
+    email = form.get("email")
+    if email:
+        sub = Subscriber.create(email)
+        await repo.save(sub)
+    
+    if request.headers.get("accept") == "application/json":
+        return {"success": True, "message": "Subscription established."}
+    return RedirectResponse(f"/{lang}", status_code=303)
+
+@app.get("/{lang}/api/posts")
+async def api_list_posts(lang: str, offset: int = 0, limit: int = 5, repo: PostRepository = Depends(get_post_repo)):
+    if lang not in SUPPORTED_LANGS:
+        raise HTTPException(status_code=404)
+    posts = await repo.list_published(lang=lang, limit=limit, offset=offset)
+    return [
+        {
+            "id": p.id,
+            "title": p.title,
+            "slug": p.slug,
+            "content": p.content,
+            "media_url": p.media_url,
+            "media_type": p.media_type,
+            "tags": p.tags,
+            "published_at": p.published_at.isoformat() if p.published_at else None,
+            "views": p.views,
+            "likes": p.likes
+        } for p in posts
+    ]
+
+@app.post("/{lang}/post/{slug}/like")
+async def post_like(lang: str, slug: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
+    if lang not in SUPPORTED_LANGS:
+        raise HTTPException(status_code=404)
+    liked_posts = request.cookies.get("liked_posts", "")
+    liked_list = liked_posts.split(",") if liked_posts else []
+    
+    if slug in liked_list:
+        if request.headers.get("accept") == "application/json":
+            return {"success": False, "message": "Already acknowledged."}
+        return RedirectResponse(f"/{lang}/post/{slug}", status_code=303)
+
+    post = await repo.find_by_slug(slug)
+    if post:
+        post.likes += 1
+        await repo.save(post)
+    
+    liked_list.append(slug)
+    new_cookie_val = ",".join(liked_list)
+    
+    response = None
+    if request.headers.get("accept") == "application/json":
+        response = JSONResponse({"success": True, "likes": post.likes if post else 0})
+    else:
+        response = RedirectResponse(f"/{lang}/post/{slug}", status_code=303)
+    
+    response.set_cookie(key="liked_posts", value=new_cookie_val, max_age=31536000) # 1 year
+    return response
+
+@app.get("/{lang}/search")
+async def search(lang: str, q: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
+    if lang not in SUPPORTED_LANGS:
+        raise HTTPException(status_code=404)
+    posts = await repo.search(q, lang=lang)
+    return templates.TemplateResponse("search.html", {"request": request, "posts": posts, "query": q, "lang": lang})
+
+@app.get("/{lang}/rss")
+async def rss_feed(lang: str, repo: PostRepository = Depends(get_post_repo)):
+    if lang not in SUPPORTED_LANGS:
+        raise HTTPException(status_code=404)
+    posts = await repo.list_published(lang=lang)
+    rss = f"""<?xml version="1.0" encoding="UTF-8" ?>
+    <rss version="2.0">
+      <channel>
+        <title>the-planet-mars.org ({lang})</title>
+        <link>https://the-planet-mars.org/{lang}</link>
+        <description>Scientific news from Mars ({lang}).</description>
+    """
+    for post in posts:
+        rss += f"""
+        <item>
+          <title>{post.title}</title>
+          <link>https://the-planet-mars.org/{lang}/post/{post.slug}</link>
+          <pubDate>{post.published_at.strftime('%a, %d %b %Y %H:%M:%S GMT') if post.published_at else ''}</pubDate>
+        </item>
+        """
+    rss += "</channel></rss>"
+    return Response(content=rss, media_type="application/xml")
+

@@ -43,9 +43,15 @@
 
     <div class="post-actions-bar"
         style="justify-content: center; border-bottom: 1px solid #222; padding-bottom: 1.5rem; margin-bottom: 3rem;">
-        <button class="action-btn like-btn" data-slug="{{ post.slug }}">Like ({{ post.likes }})</button>
-        <button class="action-btn share-btn" data-url="{{ request.url }}" data-title="{{ post.title }}">Share</button>
-        <button class="action-btn sub-btn">Subscribe</button>
+        <button class="action-btn like-btn" data-slug="{{ post.slug }}">
+            <span class="icon">♥</span> Like ({{ post.likes }})
+        </button>
+        <button class="action-btn share-btn" data-url="{{ request.url }}" data-title="{{ post.title }}">
+            <span class="icon">↗</span> Share
+        </button>
+        <button class="action-btn sub-btn">
+            <span class="icon">✉</span> Subscribe
+        </button>
     </div>
 </article>
 

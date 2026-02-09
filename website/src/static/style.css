@@ -137,6 +137,30 @@ nav {
     text-transform: uppercase;
 }
 
+.lang-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.3rem 0.8rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+}
+
+.lang-switcher a {
+    color: var(--text-dim);
+    font-weight: 700;
+}
+
+.lang-switcher a.active {
+    color: var(--mars-orange);
+}
+
+.lang-switcher .sep {
+    color: #444;
+}
+
 /* Post Grid */
 .posts-section {
     padding: 5rem 0;

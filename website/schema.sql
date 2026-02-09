@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS posts (
     media_url TEXT,
     media_type TEXT,
     tags TEXT[],
-    status TEXT NOT NULL,
+    language TEXT NOT NULL DEFAULT 'en',
     views INTEGER DEFAULT 0,
     likes INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

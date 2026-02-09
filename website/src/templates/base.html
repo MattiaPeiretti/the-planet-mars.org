@@ -17,10 +17,15 @@
 <body class="dark-theme">
     <header>
         <nav class="container">
-            <a href="/" class="logo">the-planet-mars<span>.org</span></a>
+            <a href="/{{ lang or 'en' }}" class="logo">the-planet-mars<span>.org</span></a>
             <div class="nav-links">
-                <a href="/archive">Archive</a>
-                <a href="/rss">RSS</a>
+                <a href="/{{ lang or 'en' }}/archive">Archive</a>
+                <a href="/{{ lang or 'en' }}/rss">RSS</a>
+                <div class="lang-switcher">
+                    <a href="/en" class="{% if lang == 'en' %}active{% endif %}">EN</a>
+                    <span class="sep">|</span>
+                    <a href="/it" class="{% if lang == 'it' %}active{% endif %}">IT</a>
+                </div>
             </div>
         </nav>
     </header>
@@ -38,7 +43,7 @@
             <div class="footer-subscribe">
                 <h4>Stay Updated</h4>
                 <p>Get notified when new research is published.</p>
-                <form action="/subscribe" method="POST" class="subscribe-form">
+                <form action="/{{ lang or 'en' }}/subscribe" method="POST" class="subscribe-form">
                     <input type="email" name="email" placeholder="Enter your email" required>
                     <button type="submit">Notify Me</button>
                 </form>
@@ -63,6 +68,8 @@
     </div>
 
     <script>
+        const currentLang = "{{ lang or 'en' }}";
+
         function openModal() {
             document.getElementById('subscribe-modal').classList.add('active');
         }
@@ -78,7 +85,7 @@
             const msgDiv = document.getElementById('modal-msg');
 
             try {
-                const response = await fetch('/subscribe', {
+                const response = await fetch(`/${currentLang}/subscribe`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -107,7 +114,7 @@
                 e.preventDefault();
                 const slug = likeBtn.dataset.slug;
                 try {
-                    const response = await fetch(`/post/${slug}/like`, {
+                    const response = await fetch(`/${currentLang}/post/${slug}/like`, {
                         method: 'POST',
                         headers: { 'Accept': 'application/json' }
                     });

@@ -7,7 +7,7 @@
         <p>A researcher's journey across the Martian landscape, exploring the geology and atmosphere of our neighbor.
         </p>
 
-        <form action="/search" method="GET" class="search-container">
+        <form action="/{{ lang }}/search" method="GET" class="search-container">
             <input type="text" name="q" placeholder="Search research notes...">
             <button type="submit">Search</button>
         </form>
@@ -29,7 +29,7 @@
     {% for post in posts %}
     <div class="post-card-wrapper">
         <div class="post-card">
-            <a href="/post/{{ post.slug }}" class="post-visual">
+            <a href="/{{ lang }}/post/{{ post.slug }}" class="post-visual">
                 {% if post.media_url %}
                 {% if post.media_type == 'image' %}
                 <img src="{{ post.media_url }}" alt="{{ post.title }}" class="media-content">
@@ -46,7 +46,7 @@
                     <span class="date">{{ post.published_at.strftime('%B %d, %Y') }}</span>
                     <span class="views">{{ post.views }} views</span>
                 </div>
-                <a href="/post/{{ post.slug }}" class="post-title-link">
+                <a href="/{{ lang }}/post/{{ post.slug }}" class="post-title-link">
                     <h2>{{ post.title }}</h2>
                 </a>
                 <div class="post-excerpt">
@@ -58,8 +58,8 @@
                     <button class="action-btn like-btn" data-slug="{{ post.slug }}">
                         <span class="icon">♥</span> Like ({{ post.likes }})
                     </button>
-                    <button class="action-btn share-btn" data-url="{{ request.base_url }}post/{{ post.slug }}"
-                        data-title="{{ post.title }}">
+                    <button class="action-btn share-btn"
+                        data-url="{{ request.base_url }}{{ lang }}/post/{{ post.slug }}" data-title="{{ post.title }}">
                         <span class="icon">↗</span> Share
                     </button>
                     <button class="action-btn sub-btn">
@@ -67,7 +67,7 @@
                     </button>
                 </div>
 
-                <a href="/post/{{ post.slug }}" class="read-more">Complete Research Log &rarr;</a>
+                <a href="/{{ lang }}/post/{{ post.slug }}" class="read-more">Complete Research Log &rarr;</a>
             </div>
         </div>
     </div>
@@ -106,6 +106,7 @@
         observeVideos();
 
         // --- Infinite Scroll Logic ---
+        const lang = "{{ lang }}";
         let offset = 5; // Initial limit was 5
         const limit = 5;
         let loading = false;
@@ -126,7 +127,7 @@
             loader.style.opacity = "1";
 
             try {
-                const response = await fetch(`/api/posts?offset=${offset}&limit=${limit}`);
+                const response = await fetch(`/${lang}/api/posts?offset=${offset}&limit=${limit}`);
                 const posts = await response.json();
 
                 if (posts.length === 0) {
@@ -179,7 +180,7 @@
 
             return `
                 <div class="post-card">
-                    <a href="/post/${post.slug}" class="post-visual">
+                    <a href="/${lang}/post/${post.slug}" class="post-visual">
                         ${mediaHTML}
                     </a>
                     <div class="post-card-content">
@@ -187,7 +188,7 @@
                             <span class="date">${date}</span>
                             <span class="views">${post.views} views</span>
                         </div>
-                        <a href="/post/${post.slug}" class="post-title-link">
+                        <a href="/${lang}/post/${post.slug}" class="post-title-link">
                             <h2>${post.title}</h2>
                         </a>
                         <div class="post-excerpt">
@@ -197,14 +198,14 @@
                             <button class="action-btn like-btn" data-slug="${post.slug}">
                                 <span class="icon">♥</span> Like (${post.likes})
                             </button>
-                            <button class="action-btn share-btn" data-url="${window.location.origin}/post/${post.slug}" data-title="${post.title}">
+                            <button class="action-btn share-btn" data-url="${window.location.origin}/${lang}/post/${post.slug}" data-title="${post.title}">
                                 <span class="icon">↗</span> Share
                             </button>
                             <button class="action-btn sub-btn">
                                 <span class="icon">✉</span> Subscribe
                             </button>
                         </div>
-                        <a href="/post/${post.slug}" class="read-more">Complete Research Log &rarr;</a>
+                        <a href="/${lang}/post/${post.slug}" class="read-more">Complete Research Log &rarr;</a>
                     </div>
                 </div>
             `;

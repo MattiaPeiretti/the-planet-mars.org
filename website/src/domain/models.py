@@ -18,13 +18,14 @@ class Post:
     media_type: Optional[str]  # "image" or "video"
     tags: List[str]
     status: PostStatus
+    language: str = "en" # "en" or "it"
     views: int = 0
     likes: int = 0
     created_at: datetime = field(default_factory=datetime.utcnow)
     published_at: Optional[datetime] = None
 
     @classmethod
-    def create(cls, title: str, slug: str, content: str, media_url: Optional[str], media_type: Optional[str], tags: List[str]):
+    def create(cls, title: str, slug: str, content: str, media_url: Optional[str], media_type: Optional[str], tags: List[str], language: str = "en"):
         return cls(
             id=str(uuid.uuid4()),
             title=title,
@@ -33,7 +34,8 @@ class Post:
             media_url=media_url,
             media_type=media_type,
             tags=tags,
-            status=PostStatus.DRAFT
+            status=PostStatus.DRAFT,
+            language=language
         )
 
     def publish(self):

@@ -43,6 +43,14 @@
         </div>
 
         <div class="form-group">
+            <label for="language">Research Language</label>
+            <select name="language" id="language">
+                <option value="en" {% if post and post.language=='en' %}selected{% endif %}>English (EN)</option>
+                <option value="it" {% if post and post.language=='it' %}selected{% endif %}>Italiano (IT)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
             <label>Research Content</label>
             <div id="editor-container" style="height: 400px; background: white; color: black; border-radius: 8px;">
                 {{ post.content|safe if post else '' }}

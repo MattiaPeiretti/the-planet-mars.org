@@ -9,8 +9,8 @@ class PostRepository:
 
     async def save(self, post: Post):
         query = """
-        INSERT INTO posts (id, title, slug, content, media_url, media_type, tags, status, views, likes, created_at, published_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        INSERT INTO posts (id, title, slug, content, media_url, media_type, tags, status, language, views, likes, created_at, published_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title,
             slug = EXCLUDED.slug,
@@ -19,6 +19,7 @@ class PostRepository:
             media_type = EXCLUDED.media_type,
             tags = EXCLUDED.tags,
             status = EXCLUDED.status,
+            language = EXCLUDED.language,
             views = EXCLUDED.views,
             likes = EXCLUDED.likes,
             published_at = EXCLUDED.published_at
@@ -26,8 +27,8 @@ class PostRepository:
         await self.pool.execute(
             query,
             post.id, post.title, post.slug, post.content, post.media_url,
-            post.media_type, post.tags, post.status.value, post.views,
-            post.likes, post.created_at, post.published_at
+            post.media_type, post.tags, post.status.value, post.language,
+            post.views, post.likes, post.created_at, post.published_at
         )
 
     async def find_by_id(self, post_id: str) -> Optional[Post]:
@@ -42,10 +43,10 @@ class PostRepository:
             return self._to_entity(row)
         return None
 
-    async def list_published(self, limit: int = 10, offset: int = 0) -> List[Post]:
+    async def list_published(self, lang: str = "en", limit: int = 10, offset: int = 0) -> List[Post]:
         rows = await self.pool.fetch(
-            "SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC LIMIT $1 OFFSET $2",
-            limit, offset
+            "SELECT * FROM posts WHERE status = 'published' AND language = $1 ORDER BY published_at DESC LIMIT $2 OFFSET $3",
+            lang, limit, offset
         )
         return [self._to_entity(row) for row in rows]
 
@@ -56,15 +57,15 @@ class PostRepository:
         )
         return [self._to_entity(row) for row in rows]
 
-    async def search(self, query: str) -> List[Post]:
+    async def search(self, query: str, lang: str = "en") -> List[Post]:
         rows = await self.pool.fetch(
-            "SELECT * FROM posts WHERE status = 'published' AND (title ILIKE $1 OR content ILIKE $1) ORDER BY published_at DESC",
-            f"%{query}%"
+            "SELECT * FROM posts WHERE status = 'published' AND language = $1 AND (title ILIKE $2 OR content ILIKE $2) ORDER BY published_at DESC",
+            lang, f"%{query}%"
         )
         return [self._to_entity(row) for row in rows]
 
-    async def get_stats(self):
-        row = await self.pool.fetchrow("SELECT COUNT(*) as count, SUM(views) as total_views FROM posts WHERE status = 'published'")
+    async def get_stats(self, lang: str = "en"):
+        row = await self.pool.fetchrow("SELECT COUNT(*) as count, SUM(views) as total_views FROM posts WHERE status = 'published' AND language = $1", lang)
         return {
             "post_count": row["count"] if row else 0,
             "total_views": row["total_views"] if row and row["total_views"] else 0
@@ -80,6 +81,7 @@ class PostRepository:
             media_type=row["media_type"],
             tags=row["tags"],
             status=PostStatus(row["status"]),
+            language=row["language"],
             views=row["views"],
             likes=row["likes"],
             created_at=row["created_at"],
