@@ -15,6 +15,7 @@ from slugify import slugify
 from fastapi.responses import Response, JSONResponse
 from src.storage.service import StorageService
 import uuid
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 SUPPORTED_LANGS = ["en", "it"]
 
@@ -45,6 +46,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "super-secret-mars-key"))
+security = HTTPBasic()
 
 # Templates and Static files
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
@@ -77,6 +79,20 @@ def get_current_admin(request: Request):
     if not user:
         return None
     return user
+
+
+async def get_authenticated_admin(
+    credentials: HTTPBasicCredentials = Depends(security),
+    repo: AdminRepository = Depends(get_admin_repo)
+):
+    admin = await repo.find_by_username(credentials.username)
+    if not admin or not bcrypt.checkpw(credentials.password.encode('utf-8'), admin.password_hash.encode('utf-8')):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return admin
 
 
 # --- ADMIN ROUTES ---
@@ -197,6 +213,47 @@ async def admin_signed_url(request: Request, storage: StorageService = Depends(g
         raise HTTPException(status_code=500, detail="Storage service not configured")
 
     return JSONResponse(result)
+
+
+@app.post("/api/v1/posts")
+async def api_create_post(
+    request: Request,
+    admin: Admin = Depends(get_authenticated_admin),
+    repo: PostRepository = Depends(get_post_repo)
+):
+    data = await request.json()
+    
+    title = data.get("title")
+    content = data.get("content")
+    
+    if not title or not content:
+        raise HTTPException(status_code=400, detail="Title and content are required")
+        
+    slug = slugify(title)
+    
+    post = Post.create(
+        title=title,
+        title_it=data.get("title_it"),
+        slug=slug,
+        content=content,
+        content_it=data.get("content_it"),
+        media_url=data.get("media_url"),
+        media_type=data.get("media_type"),
+        tags=data.get("tags", [])
+    )
+    
+    status_str = data.get("status", "draft")
+    if status_str == "published":
+        post.publish()
+        
+    await repo.save(post)
+    
+    return {
+        "id": post.id,
+        "title": post.title,
+        "slug": post.slug,
+        "status": post.status.value
+    }
 
 
 @app.get("/admin/subscribers")
