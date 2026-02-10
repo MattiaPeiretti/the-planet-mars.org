@@ -35,5 +35,4 @@ ENV/
 .env
 .DS_Store
 *.log
-website/src/static/mars_bg.jpg
 !website/src/static/
