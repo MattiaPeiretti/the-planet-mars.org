@@ -58,7 +58,6 @@
                     </h2>
                 </a>
                 <div class="post-excerpt">
-                <p>Content: {{ post.media_url }}</p>
                     {% if lang == 'it' and post.content_it %}
                     {% set content_text = post.content_it|striptags %}
                     {% else %}
@@ -193,7 +192,6 @@
             const excerpt = contentText.substring(0, 2400);
 
             let html_media = '';
-            console.log(post, post.media_url);
             if (post.media_url) html_media = `<a href="/${lang}/post/${post.slug}" class="post-visual">
                         ${mediaHTML}
                     </a>`
