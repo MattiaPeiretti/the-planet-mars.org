@@ -12,14 +12,15 @@ from typing import List, Optional
 from src.domain.models import Post, Subscriber, PostStatus, Admin
 from src.seed_data import SEED_VIDEOS
 from slugify import slugify
-from fastapi.responses import Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import Response, JSONResponse
+from src.storage.service import StorageService
+import uuid
 
 SUPPORTED_LANGS = ["en", "it"]
 
-
 # Database connection pool
 pool = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,7 +32,7 @@ async def lifespan(app: FastAPI):
     if os.path.exists("schema.sql"):
         with open("schema.sql", "r") as f:
             await pool.execute(f.read())
-    
+
     # Create default admin if not exists (for demo)
     async with pool.acquire() as conn:
         admin_repo = AdminRepository(conn)
@@ -41,6 +42,7 @@ async def lifespan(app: FastAPI):
     yield
     await pool.close()
 
+
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "super-secret-mars-key"))
 
@@ -48,18 +50,26 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "super-
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 templates = Jinja2Templates(directory="src/templates")
 
+
 # Dependency Injection
 async def get_post_repo():
     async with pool.acquire() as conn:
         yield PostRepository(conn)
 
+
 async def get_subscriber_repo():
     async with pool.acquire() as conn:
         yield SubscriberRepository(conn)
 
+
 async def get_admin_repo():
     async with pool.acquire() as conn:
         yield AdminRepository(conn)
+
+
+async def get_storage_service():
+    return StorageService()
+
 
 # Auth helper
 def get_current_admin(request: Request):
@@ -68,11 +78,13 @@ def get_current_admin(request: Request):
         return None
     return user
 
+
 # --- ADMIN ROUTES ---
 
 @app.get("/admin/login")
 async def admin_login_get(request: Request):
     return templates.TemplateResponse("admin_login.html", {"request": request})
+
 
 @app.post("/admin/login")
 async def admin_login_post(request: Request, repo: AdminRepository = Depends(get_admin_repo)):
@@ -85,6 +97,7 @@ async def admin_login_post(request: Request, repo: AdminRepository = Depends(get
         return RedirectResponse("/admin", status_code=303)
     return templates.TemplateResponse("admin_login.html", {"request": request, "error": "Invalid credentials"})
 
+
 @app.get("/admin")
 async def admin_dash(request: Request, repo: PostRepository = Depends(get_post_repo)):
     if not get_current_admin(request):
@@ -92,11 +105,13 @@ async def admin_dash(request: Request, repo: PostRepository = Depends(get_post_r
     posts = await repo.list_all()
     return templates.TemplateResponse("admin_dash.html", {"request": request, "posts": posts})
 
+
 @app.get("/admin/post/new")
 async def admin_post_new_get(request: Request):
     if not get_current_admin(request):
         return RedirectResponse("/admin/login")
     return templates.TemplateResponse("admin_editor.html", {"request": request, "post": None})
+
 
 @app.post("/admin/post/new")
 async def admin_post_new_post(request: Request, repo: PostRepository = Depends(get_post_repo)):
@@ -105,7 +120,7 @@ async def admin_post_new_post(request: Request, repo: PostRepository = Depends(g
     form = await request.form()
     # author_tags = [t.strip() for t in form.get("tags", "").split(",") if t.strip()]
     slug = slugify(form.get("title"))
-    
+
     post = Post.create(
         title=form.get("title"),
         title_it=form.get("title_it"),
@@ -121,12 +136,14 @@ async def admin_post_new_post(request: Request, repo: PostRepository = Depends(g
     await repo.save(post)
     return RedirectResponse("/admin", status_code=303)
 
+
 @app.get("/admin/post/edit/{post_id}")
 async def admin_post_edit_get(post_id: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
     if not get_current_admin(request):
         return RedirectResponse("/admin/login")
     post = await repo.find_by_id(post_id)
     return templates.TemplateResponse("admin_editor.html", {"request": request, "post": post})
+
 
 @app.post("/admin/post/edit/{post_id}")
 async def admin_post_edit_post(post_id: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
@@ -149,6 +166,7 @@ async def admin_post_edit_post(post_id: str, request: Request, repo: PostReposit
     await repo.save(post)
     return RedirectResponse("/admin", status_code=303)
 
+
 @app.post("/admin/post/delete/{post_id}")
 async def admin_post_delete(post_id: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
     if not get_current_admin(request):
@@ -157,6 +175,30 @@ async def admin_post_delete(post_id: str, request: Request, repo: PostRepository
         await conn.execute("DELETE FROM posts WHERE id = $1", post_id)
     return RedirectResponse("/admin", status_code=303)
 
+
+@app.post("/admin/api/signed-url")
+async def admin_signed_url(request: Request, storage: StorageService = Depends(get_storage_service)):
+    if not get_current_admin(request):
+        raise HTTPException(status_code=401)
+
+    json_data = await request.json()
+    filename = json_data.get("filename")
+    content_type = json_data.get("content_type")
+
+    if not filename or not content_type:
+        raise HTTPException(status_code=400, detail="Missing filename or content_type")
+
+    # Generate a random UUID for the filename to prevent collisions and keep it clean
+    ext = os.path.splitext(filename)[1]
+    unique_filename = f"{uuid.uuid4()}{ext}"
+
+    result = storage.generate_presigned_url(unique_filename, content_type)
+    if not result:
+        raise HTTPException(status_code=500, detail="Storage service not configured")
+
+    return JSONResponse(result)
+
+
 @app.get("/admin/subscribers")
 async def admin_subscribers(request: Request, repo: SubscriberRepository = Depends(get_subscriber_repo)):
     if not get_current_admin(request):
@@ -164,11 +206,12 @@ async def admin_subscribers(request: Request, repo: SubscriberRepository = Depen
     subs = await repo.list_active()
     return templates.TemplateResponse("admin_subscribers.html", {"request": request, "subscribers": subs})
 
+
 @app.post("/admin/seed")
 async def admin_seed(request: Request, repo: PostRepository = Depends(get_post_repo)):
     if not get_current_admin(request):
         return RedirectResponse("/admin/login")
-    
+
     import random
     for item in SEED_VIDEOS:
         post = Post.create(
@@ -181,14 +224,16 @@ async def admin_seed(request: Request, repo: PostRepository = Depends(get_post_r
         )
         post.publish()
         await repo.save(post)
-    
+
     return RedirectResponse("/admin", status_code=303)
+
 
 # --- PUBLIC ROUTES ---
 
 @app.get("/")
 async def root_redirect():
     return RedirectResponse("/en")
+
 
 @app.get("/{lang}")
 async def home(lang: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
@@ -203,6 +248,7 @@ async def home(lang: str, request: Request, repo: PostRepository = Depends(get_p
         "lang": lang
     })
 
+
 @app.get("/{lang}/post/{slug}")
 async def post_detail(lang: str, slug: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
     if lang not in SUPPORTED_LANGS:
@@ -214,12 +260,14 @@ async def post_detail(lang: str, slug: str, request: Request, repo: PostReposito
     await repo.save(post)
     return templates.TemplateResponse("post.html", {"request": request, "post": post, "lang": lang})
 
+
 @app.get("/{lang}/archive")
 async def archive(lang: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
     if lang not in SUPPORTED_LANGS:
         raise HTTPException(status_code=404)
     posts = await repo.list_published(lang=lang, limit=100)
     return templates.TemplateResponse("archive.html", {"request": request, "posts": posts, "lang": lang})
+
 
 @app.post("/{lang}/subscribe")
 async def subscribe(lang: str, request: Request, repo: SubscriberRepository = Depends(get_subscriber_repo)):
@@ -232,10 +280,11 @@ async def subscribe(lang: str, request: Request, repo: SubscriberRepository = De
     if email:
         sub = Subscriber.create(email)
         await repo.save(sub)
-    
+
     if request.headers.get("accept") == "application/json":
         return {"success": True, "message": "Subscription established."}
     return RedirectResponse(f"/{lang}", status_code=303)
+
 
 @app.get("/{lang}/api/posts")
 async def api_list_posts(lang: str, offset: int = 0, limit: int = 5, repo: PostRepository = Depends(get_post_repo)):
@@ -259,13 +308,14 @@ async def api_list_posts(lang: str, offset: int = 0, limit: int = 5, repo: PostR
         } for p in posts
     ]
 
+
 @app.post("/{lang}/post/{slug}/like")
 async def post_like(lang: str, slug: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
     if lang not in SUPPORTED_LANGS:
         raise HTTPException(status_code=404)
     liked_posts = request.cookies.get("liked_posts", "")
     liked_list = liked_posts.split(",") if liked_posts else []
-    
+
     if slug in liked_list:
         if request.headers.get("accept") == "application/json":
             return {"success": False, "message": "Already acknowledged."}
@@ -275,18 +325,19 @@ async def post_like(lang: str, slug: str, request: Request, repo: PostRepository
     if post:
         post.likes += 1
         await repo.save(post)
-    
+
     liked_list.append(slug)
     new_cookie_val = ",".join(liked_list)
-    
+
     response = None
     if request.headers.get("accept") == "application/json":
         response = JSONResponse({"success": True, "likes": post.likes if post else 0})
     else:
         response = RedirectResponse(f"/{lang}/post/{slug}", status_code=303)
-    
-    response.set_cookie(key="liked_posts", value=new_cookie_val, max_age=31536000) # 1 year
+
+    response.set_cookie(key="liked_posts", value=new_cookie_val, max_age=31536000)  # 1 year
     return response
+
 
 @app.get("/{lang}/search")
 async def search(lang: str, q: str, request: Request, repo: PostRepository = Depends(get_post_repo)):
@@ -294,6 +345,7 @@ async def search(lang: str, q: str, request: Request, repo: PostRepository = Dep
         raise HTTPException(status_code=404)
     posts = await repo.search(q, lang=lang)
     return templates.TemplateResponse("search.html", {"request": request, "posts": posts, "query": q, "lang": lang})
+
 
 @app.get("/{lang}/rss")
 async def rss_feed(lang: str, repo: PostRepository = Depends(get_post_repo)):
@@ -317,4 +369,3 @@ async def rss_feed(lang: str, repo: PostRepository = Depends(get_post_repo)):
         """
     rss += "</channel></rss>"
     return Response(content=rss, media_type="application/xml")
-

@@ -39,8 +39,16 @@
         <div class="form-row">
             <div class="form-group flex-2">
                 <label for="media_url">Media URL (Image or Video)</label>
-                <input type="text" name="media_url" id="media_url" value="{{ post.media_url if post else '' }}"
-                    placeholder="https://...">
+                <div class="input-with-button">
+                    <input type="text" name="media_url" id="media_url" value="{{ post.media_url if post else '' }}"
+                        placeholder="https://...">
+                    <button type="button" id="upload-btn" class="btn btn-secondary btn-sm">Upload Media</button>
+                    <input type="file" id="media-file" style="display: none;" accept="image/*,video/*">
+                </div>
+                <div id="upload-progress" style="display: none; margin-top: 0.5rem;">
+                    <progress id="progress-bar" value="0" max="100" style="width: 100%; height: 10px;"></progress>
+                    <small id="progress-text" class="text-dim">Uploading...</small>
+                </div>
             </div>
             <div class="form-group flex-1">
                 <label for="media_type">Media Type</label>
@@ -128,6 +136,80 @@
         }
         return true;
     };
+
+    // Media Upload Logic
+    const uploadBtn = document.getElementById('upload-btn');
+    const mediaFile = document.getElementById('media-file');
+    const mediaUrlInput = document.getElementById('media_url');
+    const mediaTypeSelect = document.getElementById('media_type');
+    const uploadProgress = document.getElementById('upload-progress');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+
+    uploadBtn.addEventListener('click', () => mediaFile.click());
+
+    mediaFile.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        uploadProgress.style.display = 'block';
+        uploadBtn.disabled = true;
+        progressText.textContent = "Requesting signed URL...";
+        progressBar.value = 0;
+
+        try {
+            // 1. Get Signed URL from Backend
+            const response = await fetch('/admin/api/signed-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: file.name,
+                    content_type: file.type
+                })
+            });
+
+            if (!response.ok) throw new Error("Could not get signed URL");
+            const { upload_url, public_url } = await response.json();
+
+            // 2. Upload directly to S3 via PUT
+            progressText.textContent = `Uploading ${file.name}...`;
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('PUT', upload_url, true);
+            xhr.setRequestHeader('Content-Type', file.type);
+            xhr.setRequestHeader('x-amz-acl', 'public-read');
+
+            xhr.upload.onprogress = (evt) => {
+                if (evt.lengthComputable) {
+                    const percentComplete = (evt.loaded / evt.total) * 100;
+                    progressBar.value = percentComplete;
+                }
+            };
+
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    mediaUrlInput.value = public_url;
+                    mediaTypeSelect.value = file.type.startsWith('image/') ? 'image' : 'video';
+                    progressText.textContent = "Upload successful!";
+                    setTimeout(() => uploadProgress.style.display = 'none', 2000);
+                } else {
+                    throw new Error("S3 Upload failed");
+                }
+                uploadBtn.disabled = false;
+            };
+
+            xhr.onerror = () => {
+                throw new Error("Network error during upload");
+            };
+
+            xhr.send(file);
+
+        } catch (err) {
+            console.error(err);
+            progressText.textContent = `Error: ${err.message}`;
+            uploadBtn.disabled = false;
+        }
+    });
 </script>
 
 <style>
@@ -213,6 +295,17 @@
         background: var(--mars-orange);
         color: var(--space-black);
         border-color: var(--mars-orange);
+    }
+
+    .input-with-button {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-sm {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+        white-space: nowrap;
     }
 
     .text-dim {

@@ -30,7 +30,7 @@ async def run_migration():
                 SELECT column_name 
                 FROM information_schema.columns 
                 WHERE table_name = 'posts' 
-                AND column_name IN ('title_it', 'content_it')
+                AND column_name IN ('title_it', 'content_it', 'status')
             """)
             existing_cols = [c['column_name'] for c in columns]
             
@@ -41,6 +41,10 @@ async def run_migration():
             if 'content_it' not in existing_cols:
                 print("Adding column 'content_it'...")
                 await conn.execute("ALTER TABLE posts ADD COLUMN content_it TEXT;")
+            
+            if 'status' not in existing_cols:
+                print("Adding column 'status'...")
+                await conn.execute("ALTER TABLE posts ADD COLUMN status TEXT NOT NULL DEFAULT 'draft';")
                 
             print("Migration completed successfully.")
             

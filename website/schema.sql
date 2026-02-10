@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS posts (
     media_url TEXT,
     media_type TEXT,
     tags TEXT[],
+    status TEXT NOT NULL DEFAULT 'draft',
     language TEXT NOT NULL DEFAULT 'en',
     views INTEGER DEFAULT 0,
     likes INTEGER DEFAULT 0,
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS admins (
     password_hash TEXT NOT NULL
 );
 
-
-GRANT  USAGE   ON SCHEMA public  TO backend;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO backend ;
+--
+-- GRANT  USAGE   ON SCHEMA public  TO backend;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO backend ;
+-- GRANT ALL PRIVILEGES ON SCHEMA public TO backend;
